@@ -11,6 +11,10 @@ void exODT_model::print_simple(long gid, int rank, int tslice, int branch, long 
     cout << comment << ": " << "G_id:" << gid << " rank:" << rank << " slice:" << tslice << " branch:" << branch << " val:" << val << endl;
 }
 
+void exODT_model::print_simple_e(int branch, long double t, long double val, char *comment) {
+    cout << comment << ": " << "e:" << branch << " time:" << t << " val:" << " val:" << val << endl;
+}
+
 
 static double EPSILON = numeric_limits<double>::min();
 
@@ -687,6 +691,7 @@ void exODT_model::calculate_EGb() {
                 if (ii == scalar_parameter["DD"] - 1) {
                     //Ee[-1][tpdt]=y_E[-1][ti+h];
                     Ee[-1][tpdt] = iy_E[-1][ii + 1];
+                    print_simple_e(-1, tpdt, Ee[-1][tpdt], "E(-1)");
                 }
 
                 for (int i = 0; i < (int) time_slices[rank].size(); i++) {
@@ -700,6 +705,7 @@ void exODT_model::calculate_EGb() {
                     if (ii == scalar_parameter["DD"] - 1) {
                         //Ee[e][tpdt]=y_E[e][ti+h];
                         Ee[e][tpdt] = iy_E[e][ii + 1];
+                        print_simple_e(e, tpdt, Ee[e][tpdt], "E(e)");
                         //if (e<1) cout << e << " " << t << " " << Ee[e][tpdt] << " " << Ee[-1][tpdt] <<endl;
 
                     }

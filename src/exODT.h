@@ -271,4 +271,6 @@ class exODT_model
   ;
 
     void print_simple(long gid, int rank, int tslice, int branch, long double val, char *comment);
+
+    void print_simple_e(int branch, long double t, long double val, char *comment);
 };
