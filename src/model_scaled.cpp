@@ -8,11 +8,20 @@ using namespace bpp;
 
 
 void exODT_model::print_simple(long gid, int rank, int tslice, int branch, long double val, char *comment) {
-    cout << comment << ": " << "G_id:" << gid << " rank:" << rank << " slice:" << tslice << " branch:" << branch << " val:" << val << endl;
+    cout << "{\"type\": \"P\", \"comment\": \"" << comment << "\", \"G_id\": " << gid << ", \"rank\": " << rank
+         << ", \"slice\": " << tslice << ", \"branch\": " << branch << ", \"val\": " << val << "},"<<endl;
 }
 
+void exODT_model::print_calc(long gid, int rank, int tslice, int t, int branch, long double val, long double valE, char *comment) {
+    //print_calc(0, rank, t_i, t, e, qvec[0][rank][t_i][e], Ee[e][t], "Innerloop");
+    cout << "{\"type\": \"C\", \"comment\": \"" << comment << "\", \"G_id\": " << gid << ", \"rank\": " << rank
+         << ", \"slice\": " << tslice << ", \"slice\": " << t << ", \"branch\": " << branch
+         << ", \"val\": " << val << ", \"valE\": " << valE <<"}," << endl;
+}
+
+
 void exODT_model::print_simple_e(int branch, long double t, long double val, char *comment) {
-    cout << comment << ": " << "e:" << branch << " time:" << t << " val:" << " val:" << val << endl;
+    cout << "{\"type\": \"E\", \"comment\": \"" << comment << "\", \"" << "branch\": " << branch << ", \"slice\": " << t << ", \"val\":" << val << "},"<<endl;
 }
 
 
@@ -22,6 +31,27 @@ static double EPSILON = numeric_limits<double>::min();
 
 //p(ale) calculates Pi(Gamma) cf. ALEPAPER
 scalar_type exODT_model::p(approx_posterior *ale) {
+    cout <<"\"S\": [" << endl ;
+
+    for (map<int,std::string>::iterator it = extant_species.begin();
+         it != extant_species.end(); it++)
+        cout << "{\"code\": "<< (*it).first << ", \"label\": \"" <<(*it).second << "\"}," << endl;
+
+    cout <<"\"end\"],"<< endl << "\"R\": [" << endl ;
+
+    cout << "{\"delta_avg\": " << scalar_parameter["delta_avg"] << "}," << endl;
+    cout << "{\"tau_avg\": " << scalar_parameter["tau_avg"] << "}," << endl;
+    cout << "{\"lambda_avg\": " << scalar_parameter["lambda_avg"] << "}," << endl;
+    cout << "{\"sigma_hat\": " << scalar_parameter["sigma_hat"] << "}," << endl;
+
+
+    cout << "\"end\"],"<< endl;
+
+
+
+    //extant_species[e] == gid_sps[g_id]
+
+
     ale_pointer = ale;
     //directed partitions and their sizes
     vector<long int> g_ids;//del-loc
@@ -126,6 +156,12 @@ scalar_type exODT_model::p(approx_posterior *ale) {
             gid_sps[g_id] = species_name;
         }
     }
+    cout <<"\"G\": [" << endl ;
+    for (map<long int,std::string>::iterator it = gid_sps.begin();
+         it != gid_sps.end(); it++)
+        cout << "{\"code\": "<< (*it).first << ", \"label\": \"" <<(*it).second << "\"}," << endl;
+
+    cout <<"\"end\"],"<< endl << "\"P\": [" << endl ;
 
     //p_parts is filled up with CCPs
     for (int i = 0; i < (int) g_ids.size(); i++) {
@@ -188,6 +224,8 @@ scalar_type exODT_model::p(approx_posterior *ale) {
             bip_parts.clear();
         }
         int N_parts = gp_ids.size();
+
+
 
         //iterate over all postions along S
         for (int rank = 0; rank < last_rank; rank++) {
@@ -382,7 +420,7 @@ scalar_type exODT_model::p(approx_posterior *ale) {
 
                     //UNDERFLOW ?
                     qvec[g_id + 1][tpdt_rank][tpdt_t_i][alpha] += q_sum;
-                    print_simple(g_id, tpdt_rank, tpdt_t_i, alpha, q_sum, "5alpha+=q_s");
+                    print_simple(g_id, tpdt_rank, tpdt_t_i, alpha, qvec[g_id + 1][tpdt_rank][tpdt_t_i][alpha], "5alpha+=q_s");
 
                     if (qvec[g_id + 1][tpdt_rank][tpdt_t_i][alpha] < EPSILON) {
                         qvec[g_id + 1][tpdt_rank][tpdt_t_i][alpha] = EPSILON;
@@ -446,7 +484,7 @@ scalar_type exODT_model::p(approx_posterior *ale) {
                         //0.
 
                         qvec[g_id + 1][tpdt_rank][tpdt_t_i][e] += q_sum;
-                        print_simple(g_id, tpdt_rank, tpdt_t_i, e, q_sum, "8e+=q_sum  ");
+                        print_simple(g_id, tpdt_rank, tpdt_t_i, e, qvec[g_id + 1][tpdt_rank][tpdt_t_i][e], "8e+=q_sum  ");
                         //UNDERFLOW?
                         if (qvec[g_id + 1][tpdt_rank][tpdt_t_i][e] < EPSILON) {
                             qvec[g_id + 1][tpdt_rank][tpdt_t_i][e] = EPSILON;
@@ -462,10 +500,13 @@ scalar_type exODT_model::p(approx_posterior *ale) {
                 //######################################################################################################################
             }
         }
+
+
         gp_ids.clear();
         gpp_ids.clear();
         p_part.clear();
     }
+    cout << "\"end\"]," << endl << "\"C\": [" << endl;
 
     scalar_type survive = 0;
     scalar_type root_sum = 0;
@@ -488,17 +529,20 @@ scalar_type exODT_model::p(approx_posterior *ale) {
             for (int branch_i = 0; branch_i < n; branch_i++) {
                 int e = time_slices[rank][branch_i];
                 //if (rank==last_rank-1 and t_i==(int)time_slice_times[rank].size()-1)//(1-Ee[e][time_slice_times[rank][t_i]])/
+                print_calc(0, rank, t_i, t, e, qvec[0][rank][t_i][e], Ee[e][t], "Innerloop");
                 root_sum += qvec[0][rank][t_i][e] * Delta_t;
                 survive += (1 - Ee[e][t]) * Delta_t;
                 //cout << t<< " " <<rank << " " << branch_i << " " << qvec[0][rank][t_i][e]*Delta_t << " "<< (1-Ee[-1][t])*Delta_t <<endl;
             }
             //if (rank==last_rank-1 and t_i==(int)time_slice_times[rank].size()-1)//(1-Ee[-1][time_slice_times[rank][t_i]]);
+            print_calc(-1, rank, t_i, t, -1, qvec[0][rank][t_i][alpha], Ee[-1][t], "Innerloop");
             root_sum += qvec[0][rank][t_i][alpha] * Delta_t;
             survive += Ee[-1][t] * Delta_t;
             //cout << t<< " " <<rank << " " << alpha << " " << qvec[0][rank][t_i][alpha]*Delta_t << " "<< (1-Ee[-1][t])*Delta_t <<endl;
         }
     }
-
+    cout << "\"end\"]" << endl;
+    cout << "}" << endl << "-------------- JSON finish here -----------------" << endl;
     //del-locs
     g_ids.clear();
     g_id_sizes.clear();
@@ -507,6 +551,7 @@ scalar_type exODT_model::p(approx_posterior *ale) {
 }
 
 void exODT_model::calculate_EGb() {
+
 
     for (std::map<int, std::map<scalar_type, scalar_type> >::iterator it = Ee.begin(); it != Ee.end(); it++)//del_loc
         (*it).second.clear();
@@ -518,7 +563,7 @@ void exODT_model::calculate_EGb() {
 
     map<int, scalar_type> Ee_y;//del-loc
     map<int, scalar_type> E_k1, E_k2, E_k3, E_k4;//del-loc
-
+    cout << "-------------- JSON starts here -----------------" << endl << "{\"E\": [" << endl;
 
     for (int rank = 0; rank < last_rank; rank++)
         for (int tsi = 0; tsi < (int) time_slice_times[rank].size(); tsi++) {
@@ -714,6 +759,8 @@ void exODT_model::calculate_EGb() {
 
             }
         }
+
+    cout << "\"end\"]," << endl;
     //del-locs
     Ee_y.clear();
     E_k1.clear();

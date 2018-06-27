@@ -107,14 +107,14 @@ int main(int argc, char **argv) {
     model->set_model_parameter("N", 1);
 
     //a set of inital rates
-    scalar_type delta = 0.1, tau = 0.1, lambda = 0.2;
+    scalar_type delta = 0.1, tau = 0.1, lambda = 0.2, sigma_hat = 1.0;
     if (argc > 7)
-        delta = atof(argv[5]), tau = atof(argv[6]), lambda = atof(argv[7]);
+        delta = atof(argv[5]), tau = atof(argv[6]), lambda = atof(argv[7]), sigma_hat = atof(argv[8]);
 
     model->set_model_parameter("delta", delta);
     model->set_model_parameter("tau", tau);
     model->set_model_parameter("lambda", lambda);
-    model->set_model_parameter("sigma_hat", 1);
+    model->set_model_parameter("sigma_hat", sigma_hat);
 
     //calculate_EGb() must always be called after changing rates to calculate E-s and G-s
     //cf. http://arxiv.org/abs/1211.4606
